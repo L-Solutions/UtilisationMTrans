@@ -1,0 +1,19 @@
+# Exclusions générales  
+.*.swp 
+.#* 
+*~ 
+#*# 
+~$*.* 
+ 
+# Exclusions MacOS 
+.DS_Store 
+.DS_Store? 
+._* 
+.Trashes 
+
+# Exclusions Stack  
+.stack/
+.stack-work/
+
+UtilisationMTrans.cabal
+
