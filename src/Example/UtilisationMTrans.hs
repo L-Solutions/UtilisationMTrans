@@ -142,7 +142,6 @@ run = do
 --
 type EtatControlé = Reader Int (State Int Text)
 
-
 eval :: EtatControlé -> Int -> Text
 eval r n = let s = runReader r n
            in evalState s 0
@@ -203,7 +202,7 @@ evalT r n = evalStateT (runReaderT r n) 0
 (***) :: Monad m => Int -> EtatControléT m -> EtatControléT m
 (***) 0 _ = put 0 >> return "0"
 (***) 1 e = e
-(***) n e = e >> (***) (n-1) e
+(***) n e = e >> (n-1) *** e
 
 -- | La monade 'incrémenteI' correspond à 'incrémente' dont le résultat
 --   est encapsulée dans la monade 'Identity'.
