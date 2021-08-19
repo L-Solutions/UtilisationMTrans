@@ -65,8 +65,10 @@ run = do
     putStrLn $ "« incrémente » de " ++ show constante ++ " à partir de 0"
     putStrLn $ unpack $ eval incrémente constante
     putStrLn $ "2 « incrémente » de " ++ show constante ++ " à partir de 0"
+    -- transformation à la main pour relier les deux incrémentations
     putStrLn $ unpack $ eval (incrémente >>= (\s0 -> (incrémente >>= \s1 -> return (s0 >> s1)))) constante
     putStrLn $ "nFois (0)" ++ " « incrémente » de " ++ show constante ++ " à partir de 0 :"
+    -- cette transformation est répercutée dans nFois
     putStrLn $ unpack $ eval (nFois 0) constante
     putStrLn $ "nFois (" ++ show nombre ++ ")" ++ " « incrémente » de " ++ show constante ++ " à partir de 0 :"
     putStrLn $ unpack $ eval (nFois nombre) constante
@@ -186,12 +188,12 @@ nFois n
 -- | 'EtatControléT' utilise un transformateur de monade pour 'Reader'.
 --
 --   * La monade @'ReaderT' e m a@ est isomorphique à @e -> m a@
---   * La monade @'State' s a@ est isomorphique à @s -> (a, s)@
+--   * La monade @'State T' s m a@ est isomorphique à @s -> m (a, s)@
 --
---   La monade 'EtatControléT' est donc isomorphique à @e -> s -> (a, s)@.
+--   La monade 'EtatControléT m' est donc isomorphique à @e -> s -> m (a, s)@.
 --
 --   En cela, il n'y a pas de différence de structure et de propriété entre
---   'EtatControlé' et 'EtatControléT'.
+--   'EtatControlé' et 'EtatControléT Identity'.
 --
 type EtatControléT m = ReaderT Int (StateT Int m) Text
 
@@ -208,14 +210,7 @@ evalT r n = evalStateT (runReaderT r n) 0
 --   est encapsulée dans la monade 'Identity'.
 --   La monade 'incrémenteI' est donc isomorphe à 'incrémente'.
 incrémenteI :: EtatControléT Identity
-incrémenteI = do constante <- ask -- l'environnement est récupéré de 'Reader'
-                 -- Etant dans une monade transformée, la monade 'State' est directement accessible
-                 variable <- get -- la variable est extraite de 'State'
-                 let nouvelleVariable = variable + constante
-                 put nouvelleVariable
-                 -- la fonction 'return' produit la valeur fournie par la monade transformée
-                 -- @'Reader' 'Int' ('State' 'Int')@ dans laquelle évolue le calcul
-                 return $ pack $ show nouvelleVariable
+incrémenteI = incrémenteT
 
 
 -- | La fonction 'nFoisI' compose @n@ itérations de 'incrémenteI'.
@@ -235,15 +230,7 @@ type EtatControléIO = EtatControléT IO
 
 -- | La monade 'incrémenteIO' ...
 incrémenteIO :: EtatControléIO
-incrémenteIO = do constante <- ask -- l'environnement est récupéré de 'Reader'
-                  -- Etant dans une monade transformée, la monade 'State' est directement accessible
-                  variable <- get -- la variable est extraite de 'State'
-                  let nouvelleVariable = variable + constante
-                  put nouvelleVariable
-                  -- la fonction 'return' produit la valeur fournie par la monade transformée
-                  -- @'Reader' 'Int' ('State' 'Int')@ dans laquelle évolue le calcul
-                  return $ pack $ show nouvelleVariable
-
+incrémenteIO = incrémenteT
 
 -- | La fonction 'nFoisIO' compose @n@ itérations de 'incrémenteIO'.
 nFoisIO :: Int -> EtatControléIO
@@ -259,4 +246,13 @@ nFoisIO n = n *** (get >>= affiche >> incrémenteIO)
 -- L'utilisation des transformateurs de monade (et de EtatControléT) cache ce mécanisme.
 -- En effet, la monade est maintenant (Reader Int (State Int))
 
-
+-- Généralisation d'incrémentation
+incrémenteT :: Monad m => EtatControléT m
+incrémenteT = do constante <- ask -- l'environnement est récupéré de 'Reader'
+                 -- Etant dans une monade transformée, la monade 'State' est directement accessible
+                 variable <- get -- la variable est extraite de 'State'
+                 let nouvelleVariable = variable + constante
+                 put nouvelleVariable
+                 -- la fonction 'return' produit la valeur fournie par la monade transformée
+                 -- @'Reader' 'Int' ('State' 'Int')@ dans laquelle évolue le calcul
+                 return $ pack $ show nouvelleVariable
